@@ -1,4 +1,6 @@
 ---
+import SupportChat from '../components/SupportChat.astro';
+
 export interface Props {
   title: string;
   description?: string;
@@ -31,6 +33,7 @@ const { title, description = "Share recipes with your friends & family. Import, 
   </head>
   <body>
     <slot />
+    <SupportChat />
   </body>
 </html>
 
