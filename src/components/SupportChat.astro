@@ -84,17 +84,38 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
       panel.style.height = 'auto';
     }
 
+    // iOS will scroll the document out from under a position:fixed overlay when
+    // an input focuses (overflow:hidden isn't enough). Pinning the body with
+    // position:fixed fully freezes the page so the panel stays put.
+    let savedScrollY = 0;
+    function lockBody() {
+      savedScrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${savedScrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+    function unlockBody() {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, savedScrollY);
+    }
+
     function setOpen(open) {
       panel.hidden = !open;
       launcher.setAttribute('aria-expanded', String(open));
       launcher.classList.toggle('sc-open', open);
-      // Lock background scroll while the full-screen mobile panel is open.
-      document.body.style.overflow = (open && isMobile()) ? 'hidden' : '';
       if (open) {
+        if (isMobile()) lockBody();
         syncViewport();
         // Don't auto-pop the keyboard on mobile; let the user read first.
         if (!isMobile()) setTimeout(() => input.focus(), 50);
       } else {
+        if (isMobile()) unlockBody();
         clearPanelInsets();
       }
     }
