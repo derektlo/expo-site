@@ -5,7 +5,7 @@ category: "AI Recipes & Personalization"
 order: 3
 ---
 
-Expo learns your culinary preferences over time and uses them to personalize recommendations and recipe generation.
+Expo learns your culinary preferences over time and uses them to personalize recommendations and [recipe generation](/help/generate-a-recipe).
 
 ## How Expo learns your taste
 

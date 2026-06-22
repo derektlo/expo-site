@@ -9,7 +9,7 @@ Expo is better with the people you cook with. You can follow friends and family,
 
 ## Follow friends
 
-Search for people you know and follow them to see what they're cooking. Following someone adds their activity to your feed.
+Search for people you know and follow them to see what they're cooking. Following someone adds their activity to your [feed](/help/activity-ratings-leaderboards).
 
 ## Private profiles and follow requests
 

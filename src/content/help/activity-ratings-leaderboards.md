@@ -16,7 +16,7 @@ Your feed shows what the people you follow are up to — recipes they've cooked,
 After cooking a recipe, you can rate it and leave a comment. Ratings do two things:
 
 - They help your friends decide what's worth making.
-- They help Expo learn your taste, which improves your recommendations.
+- They help Expo [learn your taste](/help/taste-profile-and-match), which improves your recommendations.
 
 You can also comment on recipes to share tips, tweaks, or just say how it turned out.
 
@@ -26,4 +26,4 @@ Expo includes leaderboards and challenges to keep cooking fun and a little compe
 
 ## Controlling your visibility
 
-If you'd rather keep your activity to approved followers, set your profile to private in **Settings → Privacy**. See **Friends, following, and shared cookbooks** for details.
+If you'd rather keep your activity to approved followers, set your profile to private in **Settings → Privacy**. See [Friends, following, and shared cookbooks](/help/friends-and-sharing) for details.

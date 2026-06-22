@@ -14,7 +14,7 @@ Expo can create a brand-new recipe from a description. Tell it what you're in th
    - "A cozy weeknight pasta with mushrooms"
    - "Something spicy with the chicken and peppers I have"
    - "A light, high-protein lunch for two"
-3. Expo generates a full recipe. Review it, and if it's not quite right, revise it (see Personalize a recipe).
+3. Expo generates a full recipe. Review it, and if it's not quite right, revise it (see [Personalize and revise a recipe](/help/personalize-a-recipe)).
 4. Save it to your recipes when you're happy.
 
 ## Make it from what you have
@@ -23,7 +23,7 @@ If you tell Expo which ingredients you have on hand, it will build the recipe ar
 
 ## It gets better over time
 
-The more you use Expo — saving recipes, rating cooks, and giving feedback — the more your generated recipes reflect your personal taste. See **Your taste profile and match score** to learn how that works.
+The more you use Expo — saving recipes, rating cooks, and giving feedback — the more your generated recipes reflect your personal taste. See [Your taste profile and match score](/help/taste-profile-and-match) to learn how that works.
 
 ## Personalized to you
 

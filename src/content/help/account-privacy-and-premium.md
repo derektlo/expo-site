@@ -13,11 +13,11 @@ Go to **Settings → Personal Details** to view and update your account informat
 
 ## Privacy
 
-Under **Settings → Privacy**, the **Private Profile** toggle controls who can see your activity. When it's on, people must send a follow request you approve. When it's off, anyone can follow you.
+Under **Settings → Privacy**, the **Private Profile** toggle controls who can see your activity. When it's on, people must send a follow request you approve. When it's off, anyone can follow you. See [Friends, following, and shared cookbooks](/help/friends-and-sharing) for how following works.
 
 ## Notifications
 
-Open **Settings → Notifications** to choose what Expo notifies you about. Cooking timers can send time-sensitive alerts so you don't miss them while a dish is on the stove.
+Open **Settings → Notifications** to choose what Expo notifies you about. [Cooking timers](/help/cook-mode-and-timers) can send time-sensitive alerts so you don't miss them while a dish is on the stove.
 
 ## Premium
 

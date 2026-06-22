@@ -5,7 +5,7 @@ category: "AI Recipes & Personalization"
 order: 2
 ---
 
-Any recipe in Expo can be adapted to suit you. Whether it's one you generated, imported, or saved from a friend, you can revise it with a quick instruction.
+Any recipe in Expo can be adapted to suit you. Whether it's one you [generated](/help/generate-a-recipe), [imported](/help/import-from-a-link), or saved from a friend, you can revise it with a quick instruction.
 
 ## Revise a recipe
 

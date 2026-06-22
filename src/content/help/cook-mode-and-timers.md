@@ -23,8 +23,8 @@ Because cooking timers are time-sensitive, Expo can notify you when a timer fini
 
 ## Cook hands-free
 
-You don't have to touch your phone while you cook. With the "Hey Expo" voice assistant you can ask questions and move through a recipe out loud. See **The "Hey Expo" voice assistant** to set it up.
+You don't have to touch your phone while you cook. With the "Hey Expo" voice assistant you can ask questions and move through a recipe out loud. See [The "Hey Expo" voice assistant](/help/hey-expo-voice) to set it up.
 
 ## After you cook
 
-When you finish, you can rate the recipe and leave notes. Your rating helps Expo learn your taste and improves future recommendations.
+When you finish, you can [rate the recipe and leave notes](/help/activity-ratings-leaderboards). Your rating helps Expo [learn your taste](/help/taste-profile-and-match) and improves future recommendations.
