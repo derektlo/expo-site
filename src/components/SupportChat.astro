@@ -69,13 +69,19 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
 
     function isMobile() { return window.innerWidth <= 600; }
 
-    // On mobile the panel is full-screen; size it to the visual viewport so the
-    // input stays above the on-screen keyboard instead of being covered by it.
+    function clearPanelInsets() { panel.style.top = ''; panel.style.bottom = ''; panel.style.height = ''; }
+
+    // On mobile the panel is full-screen; pin it between the top of the screen
+    // and the top of the on-screen keyboard. Anchoring BOTH top:0 and
+    // bottom:<keyboard inset> (rather than setting height) avoids the iOS gap
+    // where the page shows through below the input when the field is focused.
     function syncViewport() {
       const vv = window.visualViewport;
-      if (!vv || !isMobile() || panel.hidden) { panel.style.height = ''; panel.style.top = ''; return; }
-      panel.style.height = vv.height + 'px';
-      panel.style.top = (vv.offsetTop || 0) + 'px';
+      if (!vv || !isMobile() || panel.hidden) { clearPanelInsets(); return; }
+      const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      panel.style.top = '0px';
+      panel.style.bottom = keyboardInset + 'px';
+      panel.style.height = 'auto';
     }
 
     function setOpen(open) {
@@ -89,8 +95,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
         // Don't auto-pop the keyboard on mobile; let the user read first.
         if (!isMobile()) setTimeout(() => input.focus(), 50);
       } else {
-        panel.style.height = '';
-        panel.style.top = '';
+        clearPanelInsets();
       }
     }
     function isOpen() { return !panel.hidden; }
@@ -99,6 +104,10 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
       window.visualViewport.addEventListener('resize', syncViewport);
       window.visualViewport.addEventListener('scroll', syncViewport);
     }
+    // iOS sometimes settles the keyboard size a beat after focus/blur fires;
+    // re-sync shortly after to catch the final viewport.
+    input.addEventListener('focus', () => setTimeout(syncViewport, 100));
+    input.addEventListener('blur', () => setTimeout(syncViewport, 100));
 
     launcher.addEventListener('click', () => setOpen(!isOpen()));
     closeBtn.addEventListener('click', () => { setOpen(false); launcher.focus(); });
