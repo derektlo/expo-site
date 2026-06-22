@@ -134,6 +134,10 @@ for (const list of byCategory.values()) {
 
   .hc-footer { text-align: center; padding: 40px 24px 64px; color: var(--text-mid); font-size: 15px; background: #fff; }
   .hc-footer a { color: var(--orange); text-decoration: underline; }
+</style>
 
-  body { background: #fff; }
+<style is:global>
+  /* Override Layout's deep-green body background for help pages. `html body`
+     beats Layout's `body` rule regardless of stylesheet order. */
+  html body { background: #fff; }
 </style>

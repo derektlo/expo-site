@@ -83,6 +83,10 @@ const { Content } = await entry.render();
   .hc-cta-btn:hover { background: #0a5329; }
   .hc-cta span { display: block; margin-top: 14px; font-size: 14px; color: var(--text-mid); }
   .hc-cta a { color: var(--orange); text-decoration: underline; }
+</style>
 
-  body { background: #fff; }
+<style is:global>
+  /* Override Layout's deep-green body background for help pages. `html body`
+     beats Layout's `body` rule regardless of stylesheet order. */
+  html body { background: #fff; }
 </style>
