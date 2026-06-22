@@ -67,13 +67,38 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
     const history = []; // { role, content }
     let busy = false;
 
+    function isMobile() { return window.innerWidth <= 600; }
+
+    // On mobile the panel is full-screen; size it to the visual viewport so the
+    // input stays above the on-screen keyboard instead of being covered by it.
+    function syncViewport() {
+      const vv = window.visualViewport;
+      if (!vv || !isMobile() || panel.hidden) { panel.style.height = ''; panel.style.top = ''; return; }
+      panel.style.height = vv.height + 'px';
+      panel.style.top = (vv.offsetTop || 0) + 'px';
+    }
+
     function setOpen(open) {
       panel.hidden = !open;
       launcher.setAttribute('aria-expanded', String(open));
       launcher.classList.toggle('sc-open', open);
-      if (open) setTimeout(() => input.focus(), 50);
+      // Lock background scroll while the full-screen mobile panel is open.
+      document.body.style.overflow = (open && isMobile()) ? 'hidden' : '';
+      if (open) {
+        syncViewport();
+        // Don't auto-pop the keyboard on mobile; let the user read first.
+        if (!isMobile()) setTimeout(() => input.focus(), 50);
+      } else {
+        panel.style.height = '';
+        panel.style.top = '';
+      }
     }
     function isOpen() { return !panel.hidden; }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
+    }
 
     launcher.addEventListener('click', () => setOpen(!isOpen()));
     closeBtn.addEventListener('click', () => { setOpen(false); launcher.focus(); });
@@ -265,6 +290,17 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
 
   @media (max-width: 600px) {
     .sc-root { bottom: 16px; right: 16px; }
-    .sc-panel { bottom: 72px; }
+    /* Full-screen chat on mobile. JS sizes height to the visual viewport so the
+       input clears the keyboard; this is the fallback before JS runs. */
+    .sc-panel {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100dvh;
+      max-height: none;
+      border-radius: 0;
+    }
+    .sc-header { padding-top: max(16px, env(safe-area-inset-top)); }
+    .sc-footnote { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   }
 </style>
