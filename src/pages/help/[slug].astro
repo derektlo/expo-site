@@ -1,0 +1,92 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('help');
+  return articles.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+type Props = { entry: CollectionEntry<'help'> };
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+---
+
+<Layout title={`${entry.data.title} — Expo Help`} description={entry.data.description}>
+  <nav class="hc-nav">
+    <div class="hc-nav-inner">
+      <a href="/" class="hc-logo" aria-label="Expo home">
+        <img src="/expo-logo.svg" alt="Expo" width="110" height="30" />
+      </a>
+      <a href="/help" class="hc-nav-link">Help center</a>
+    </div>
+  </nav>
+
+  <article class="hc-article">
+    <nav class="hc-breadcrumb" aria-label="Breadcrumb">
+      <a href="/help">Help</a>
+      <span aria-hidden="true">/</span>
+      <span>{entry.data.category}</span>
+    </nav>
+    <h1>{entry.data.title}</h1>
+    <p class="hc-lede">{entry.data.description}</p>
+    <div class="hc-prose">
+      <Content />
+    </div>
+
+    <div class="hc-cta">
+      <p>Didn't find what you needed?</p>
+      <button id="hc-ask" class="hc-cta-btn">Ask the assistant</button>
+      <span>or email <a href="mailto:support@heyexpo.com">support@heyexpo.com</a></span>
+    </div>
+  </article>
+</Layout>
+
+<script>
+  document.getElementById('hc-ask')?.addEventListener('click', () =>
+    window.dispatchEvent(new CustomEvent('open-support-chat')),
+  );
+</script>
+
+<style>
+  .hc-nav { background: var(--deep-green); }
+  .hc-nav-inner { max-width: 740px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .hc-logo img { height: 28px; width: auto; }
+  .hc-nav-link { color: rgba(208,255,194,0.75); font-size: 14px; font-weight: 500; }
+  .hc-nav-link:hover { color: var(--green); }
+
+  .hc-article { max-width: 740px; margin: 0 auto; padding: 40px 24px 72px; }
+
+  .hc-breadcrumb { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text-mid); margin-bottom: 20px; }
+  .hc-breadcrumb a { color: var(--deep-green); font-weight: 500; }
+  .hc-breadcrumb a:hover { text-decoration: underline; }
+
+  .hc-article h1 { font-family: 'Fraunces', serif; font-weight: 400; font-size: clamp(30px, 4.5vw, 44px); color: var(--deep-green); letter-spacing: -0.02em; line-height: 1.12; margin-bottom: 12px; }
+  .hc-lede { font-size: 18px; line-height: 1.6; color: var(--text-mid); margin-bottom: 32px; }
+
+  /* Markdown prose */
+  .hc-prose { font-size: 16.5px; line-height: 1.7; color: var(--text-dark); }
+  .hc-prose :global(h2) { font-family: 'Fraunces', serif; font-weight: 400; font-size: 24px; color: var(--deep-green); margin: 36px 0 12px; letter-spacing: -0.01em; }
+  .hc-prose :global(h3) { font-size: 18px; font-weight: 600; color: var(--deep-green); margin: 24px 0 8px; }
+  .hc-prose :global(p) { margin: 0 0 16px; }
+  .hc-prose :global(ul), .hc-prose :global(ol) { margin: 0 0 16px; padding-left: 24px; }
+  .hc-prose :global(li) { margin-bottom: 8px; }
+  .hc-prose :global(a) { color: var(--orange); text-decoration: underline; }
+  .hc-prose :global(strong) { color: var(--deep-green); font-weight: 700; }
+
+  .hc-cta { margin-top: 48px; padding: 24px; background: var(--cream); border-radius: 16px; text-align: center; }
+  .hc-cta p { font-weight: 600; color: var(--deep-green); margin-bottom: 14px; }
+  .hc-cta-btn { background: var(--deep-green); color: var(--green); border: none; border-radius: 100px; padding: 11px 24px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s ease; }
+  .hc-cta-btn:hover { background: #0a5329; }
+  .hc-cta span { display: block; margin-top: 14px; font-size: 14px; color: var(--text-mid); }
+  .hc-cta a { color: var(--orange); text-decoration: underline; }
+</style>
+
+<style is:global>
+  /* Override Layout's deep-green body background for help pages. `html body`
+     beats Layout's `body` rule regardless of stylesheet order. */
+  html body { background: #fff; }
+</style>

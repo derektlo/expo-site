@@ -1,0 +1,14 @@
+# build output
+dist/
+.output/
+# deps
+node_modules/
+# astro
+.astro/
+# env (PUBLIC_ vars are inlined at build; keep local .env out of git)
+.env
+.env.production
+# vercel
+.vercel/
+# os
+.DS_Store

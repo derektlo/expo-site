@@ -1,0 +1,339 @@
+---
+// Site-wide support assistant: a floating launcher + chat panel. Pure vanilla
+// JS island (no framework). Calls the Supabase `support-chat` edge function,
+// which retrieves over the help-center content and answers with Claude.
+//
+// Open it programmatically from anywhere with:
+//   window.dispatchEvent(new CustomEvent('open-support-chat'))
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL ?? '';
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+---
+
+<div id="support-chat" class="sc-root">
+  <button id="sc-launcher" class="sc-launcher" aria-label="Open support chat" aria-expanded="false" aria-controls="sc-panel">
+    <svg class="sc-launcher-icon sc-icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+    <svg class="sc-launcher-icon sc-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  <div id="sc-panel" class="sc-panel" role="dialog" aria-modal="false" aria-label="Expo support assistant" hidden>
+    <header class="sc-header">
+      <div class="sc-header-title">
+        <span class="sc-dot" aria-hidden="true"></span>
+        Expo Assistant
+      </div>
+      <button id="sc-close" class="sc-close" aria-label="Close support chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <div id="sc-messages" class="sc-messages" aria-live="polite">
+      <div class="sc-msg sc-msg-bot">
+        <p>Hi! I'm Expo's assistant. Ask me anything about importing, generating, cooking, planning, or sharing recipes.</p>
+      </div>
+    </div>
+
+    <form id="sc-form" class="sc-form">
+      <input id="sc-input" class="sc-input" type="text" autocomplete="off"
+             placeholder="Ask a question…" aria-label="Type your question" maxlength="1000" />
+      <button id="sc-send" class="sc-send" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </form>
+    <p class="sc-footnote">Answers come from Expo's help center. For more, email <a href="mailto:support@heyexpo.com">support@heyexpo.com</a>.</p>
+  </div>
+</div>
+
+<script define:vars={{ supabaseUrl, supabaseAnonKey }}>
+  (function () {
+    const root = document.getElementById('support-chat');
+    if (!root) return;
+    const launcher = document.getElementById('sc-launcher');
+    const panel = document.getElementById('sc-panel');
+    const closeBtn = document.getElementById('sc-close');
+    const messages = document.getElementById('sc-messages');
+    const form = document.getElementById('sc-form');
+    const input = document.getElementById('sc-input');
+    const sendBtn = document.getElementById('sc-send');
+
+    const endpoint = supabaseUrl ? `${supabaseUrl}/functions/v1/support-chat` : '';
+    const history = []; // { role, content }
+    let busy = false;
+
+    function isMobile() { return window.innerWidth <= 600; }
+
+    function clearPanelInsets() { panel.style.top = ''; panel.style.bottom = ''; panel.style.height = ''; }
+
+    // On mobile the panel is full-screen; pin it between the top of the screen
+    // and the top of the on-screen keyboard. Anchoring BOTH top:0 and
+    // bottom:<keyboard inset> (rather than setting height) avoids the iOS gap
+    // where the page shows through below the input when the field is focused.
+    function syncViewport() {
+      const vv = window.visualViewport;
+      if (!vv || !isMobile() || panel.hidden) { clearPanelInsets(); return; }
+      const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      panel.style.top = '0px';
+      panel.style.bottom = keyboardInset + 'px';
+      panel.style.height = 'auto';
+    }
+
+    // iOS will scroll the document out from under a position:fixed overlay when
+    // an input focuses (overflow:hidden isn't enough). Pinning the body with
+    // position:fixed fully freezes the page so the panel stays put.
+    let savedScrollY = 0;
+    function lockBody() {
+      savedScrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${savedScrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+    function unlockBody() {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, savedScrollY);
+    }
+
+    function setOpen(open) {
+      panel.hidden = !open;
+      launcher.setAttribute('aria-expanded', String(open));
+      launcher.classList.toggle('sc-open', open);
+      if (open) {
+        if (isMobile()) lockBody();
+        syncViewport();
+        // Don't auto-pop the keyboard on mobile; let the user read first.
+        if (!isMobile()) setTimeout(() => input.focus(), 50);
+      } else {
+        if (isMobile()) unlockBody();
+        clearPanelInsets();
+      }
+    }
+    function isOpen() { return !panel.hidden; }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewport);
+      window.visualViewport.addEventListener('scroll', syncViewport);
+    }
+    // iOS sometimes settles the keyboard size a beat after focus/blur fires;
+    // re-sync shortly after to catch the final viewport.
+    input.addEventListener('focus', () => setTimeout(syncViewport, 100));
+    input.addEventListener('blur', () => setTimeout(syncViewport, 100));
+
+    launcher.addEventListener('click', () => setOpen(!isOpen()));
+    closeBtn.addEventListener('click', () => { setOpen(false); launcher.focus(); });
+    window.addEventListener('open-support-chat', () => setOpen(true));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen()) { setOpen(false); launcher.focus(); }
+    });
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function addMessage(role, html) {
+      const el = document.createElement('div');
+      el.className = `sc-msg sc-msg-${role}`;
+      el.innerHTML = html;
+      messages.appendChild(el);
+      messages.scrollTop = messages.scrollHeight;
+      return el;
+    }
+
+    function mdInline(s) {
+      return escapeHtml(s)
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+
+    // Minimal markdown -> HTML for the assistant's plain-text answers:
+    // paragraphs, numbered + bulleted lists, and inline bold/code.
+    function renderMarkdown(text) {
+      const lines = text.split('\n');
+      const out = [];
+      let list = null; // 'ol' | 'ul'
+      let para = [];
+      const flushPara = () => { if (para.length) { out.push('<p>' + para.map(mdInline).join('<br>') + '</p>'); para = []; } };
+      const flushList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+      for (const raw of lines) {
+        const line = raw.trimEnd();
+        const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+        const ul = line.match(/^\s*[-*]\s+(.*)$/);
+        if (ol) {
+          flushPara();
+          if (list !== 'ol') { flushList(); out.push('<ol>'); list = 'ol'; }
+          out.push('<li>' + mdInline(ol[1]) + '</li>');
+        } else if (ul) {
+          flushPara();
+          if (list !== 'ul') { flushList(); out.push('<ul>'); list = 'ul'; }
+          out.push('<li>' + mdInline(ul[1]) + '</li>');
+        } else if (line.trim() === '') {
+          flushPara(); flushList();
+        } else {
+          flushList();
+          para.push(line);
+        }
+      }
+      flushPara(); flushList();
+      return out.join('');
+    }
+
+    function renderAnswer(answer, sources) {
+      let html = renderMarkdown(answer);
+      if (sources && sources.length) {
+        const links = sources
+          .map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a>`)
+          .join('');
+        html += `<div class="sc-sources"><span class="sc-sources-label">Related help</span>${links}</div>`;
+      }
+      return html;
+    }
+
+    async function ask(question) {
+      if (busy || !question.trim()) return;
+      if (!endpoint) {
+        addMessage('bot', '<p>Support chat is not configured. Please email <a href="mailto:support@heyexpo.com">support@heyexpo.com</a>.</p>');
+        return;
+      }
+      busy = true;
+      sendBtn.disabled = true;
+      input.value = '';
+      addMessage('user', `<p>${escapeHtml(question)}</p>`);
+      const typing = addMessage('bot', '<span class="sc-typing"><span></span><span></span><span></span></span>');
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'apikey': supabaseAnonKey,
+          },
+          body: JSON.stringify({ question, history: history.slice(-6) }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const answer = data.answer || "Sorry, something went wrong. Please try again, or email support@heyexpo.com.";
+        typing.innerHTML = renderAnswer(answer, data.sources);
+        history.push({ role: 'user', content: question });
+        history.push({ role: 'assistant', content: answer });
+      } catch (err) {
+        typing.innerHTML = '<p>I couldn\'t reach the assistant. Please check your connection and try again, or email <a href="mailto:support@heyexpo.com">support@heyexpo.com</a>.</p>';
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+        messages.scrollTop = messages.scrollHeight;
+        input.focus();
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      ask(input.value);
+    });
+  })();
+</script>
+
+<style is:global>
+  /* Global (not scoped) because the chat messages are injected via JS and
+     would not receive Astro's scoped-style hash. All selectors are sc-prefixed. */
+  .sc-root { position: fixed; bottom: 24px; right: 24px; z-index: 1000; }
+
+  .sc-launcher {
+    width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--green); color: var(--deep-green);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 12px 32px rgba(8, 65, 33, 0.32);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .sc-launcher:hover { transform: translateY(-2px); }
+  .sc-launcher-icon { width: 26px; height: 26px; position: absolute; transition: opacity 0.15s ease, transform 0.15s ease; }
+  .sc-icon-close { opacity: 0; transform: rotate(-45deg); }
+  .sc-launcher.sc-open .sc-icon-chat { opacity: 0; transform: rotate(45deg); }
+  .sc-launcher.sc-open .sc-icon-close { opacity: 1; transform: rotate(0); }
+
+  .sc-panel {
+    position: absolute; bottom: 76px; right: 0;
+    width: min(380px, calc(100vw - 32px)); height: min(560px, calc(100vh - 120px));
+    background: #fff; border-radius: 20px; overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 24px 64px rgba(8, 65, 33, 0.28);
+    border: 1px solid rgba(8, 65, 33, 0.08);
+  }
+  /* `display: flex` above overrides the `hidden` attribute's display:none, so
+     the panel must be explicitly hidden when the attribute is set. */
+  .sc-panel[hidden] { display: none; }
+
+  .sc-header {
+    background: var(--deep-green); color: var(--green);
+    padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .sc-header-title { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 15px; }
+  .sc-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,0.25); }
+  .sc-close { background: transparent; border: none; color: var(--green); cursor: pointer; padding: 4px; opacity: 0.8; }
+  .sc-close:hover { opacity: 1; }
+  .sc-close svg { width: 20px; height: 20px; }
+
+  .sc-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; background: #fff; -webkit-overflow-scrolling: touch; }
+
+  .sc-msg { max-width: 80%; font-size: 15px; line-height: 1.45; border-radius: 20px; padding: 10px 15px; }
+  .sc-msg p { margin: 0 0 8px; }
+  .sc-msg p:last-child { margin-bottom: 0; }
+  .sc-msg-bot { background: #e9e9eb; color: #1a1a1a; align-self: flex-start; border-bottom-left-radius: 6px; }
+  .sc-msg-user { background: var(--deep-green); color: #fff; align-self: flex-end; border-bottom-right-radius: 6px; }
+  .sc-msg a { color: var(--orange); text-decoration: underline; }
+  .sc-msg ol, .sc-msg ul { margin: 8px 0 0; padding-left: 22px; }
+  .sc-msg li { margin-bottom: 5px; }
+  .sc-msg li:last-child { margin-bottom: 0; }
+  .sc-msg code { background: rgba(8,65,33,0.07); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+
+  .sc-sources { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.12); display: flex; flex-direction: column; gap: 6px; }
+  .sc-sources span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #999; }
+  .sc-sources a { font-size: 13px; color: var(--deep-green); text-decoration: none; font-weight: 500; }
+  .sc-sources a:hover { text-decoration: underline; }
+
+  .sc-typing { display: inline-flex; gap: 4px; padding: 2px 0; }
+  .sc-typing span { width: 7px; height: 7px; border-radius: 50%; background: #bbb; animation: sc-bounce 1.2s infinite ease-in-out; }
+  .sc-typing span:nth-child(2) { animation-delay: 0.15s; }
+  .sc-typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes sc-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+
+  .sc-form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px; border-top: 1px solid rgba(0,0,0,0.08); background: #fff; }
+  /* 16px font-size keeps iOS Safari from auto-zooming when the field is focused. */
+  .sc-input { flex: 1; min-width: 0; border: 1px solid rgba(0,0,0,0.15); border-radius: 20px; padding: 10px 15px; font-size: 16px; font-family: inherit; outline: none; }
+  .sc-input:focus { border-color: var(--deep-green); }
+  .sc-send { flex: 0 0 auto; width: 40px; height: 40px; border: none; border-radius: 50%; background: var(--deep-green); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .sc-send:hover { background: #0a5329; }
+  .sc-send:disabled { opacity: 0.5; cursor: default; }
+  .sc-send svg { width: 18px; height: 18px; }
+
+  .sc-footnote { font-size: 11px; color: #999; text-align: center; padding: 0 12px 10px; background: #fff; margin: 0; }
+  .sc-footnote a { color: #999; text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .sc-root { bottom: 16px; right: 16px; }
+    /* Full-screen chat on mobile. JS sizes height to the visual viewport so the
+       input clears the keyboard; this is the fallback before JS runs. */
+    .sc-panel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100dvh; max-height: none;
+      border: none; border-radius: 0;
+    }
+    .sc-header { padding-top: max(16px, env(safe-area-inset-top)); }
+    .sc-messages { padding: 14px 14px 6px; }
+    /* Pin the input bar to the bottom (above the keyboard via JS sizing) and
+       drop the disclaimer on mobile so the conversation feels native. */
+    .sc-form { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+    .sc-footnote { display: none; }
+  }
+</style>
